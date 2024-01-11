@@ -1,75 +1,98 @@
 package com.gridnine.testing.test.unit;
 
+import com.gridnine.testing.filtration.ArrivalBeforeDepartureCriterion;
+import com.gridnine.testing.filtration.DepartureBeforeNowCriterion;
+import com.gridnine.testing.filtration.FlightFiltrationCriterion;
+import com.gridnine.testing.filtration.LandTimeCriterion;
 import com.gridnine.testing.model.Flight;
 import com.gridnine.testing.service.FlightService;
 import com.gridnine.testing.service.FlightServiceImpl;
-import com.gridnine.testing.test.util.FlightBuilderTest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Predicate;
 
-import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 public class FilterModuleTest {
 
     private FlightService flightService;
-    private List<Flight> testFlights;
 
-    private Predicate<Flight> nullPredicate;
+    private LandTimeCriterion landTimeCriterion;
 
-    private Predicate<Flight> departureBeforeNow;
-    private Predicate<Flight> arrivalBeforeDeparture;
-    private Predicate<Flight> landingTimeMoreThan120Minutes;
+    private ArrivalBeforeDepartureCriterion arrivalBeforeDepartureCriterion;
+
+    private DepartureBeforeNowCriterion departureBeforeNowCriterion;
+
+    private List<FlightFiltrationCriterion> combinedCriteria;
 
     private List<Flight> idealFlights;
     private List<Flight> flightsWithoutDepartureBeforeNow;
-    private List<Flight> flightsWithoutDepartureBeforeArriving;
+    private List<Flight> flightsWithoutDepartureBeforeArrival;
     private List<Flight> flightsWithoutLandingTimeMoreThan120Minutes;
+
+    private List<Flight> flights;
 
     @BeforeEach
     void beforeEach() {
         flightService = new FlightServiceImpl();
-        testFlights = flightService.getAllFlights();
 
-        nullPredicate = null;
-        departureBeforeNow = flight -> flight.getSegments().stream()
-                .noneMatch(segment -> segment.getDepartureDate().isBefore(LocalDateTime.now()));
-        landingTimeMoreThan120Minutes = flight -> flight.getSegments().stream()
-                .noneMatch(segment -> segment.getArrivalDate().isBefore(segment.getDepartureDate()));
+        landTimeCriterion = new LandTimeCriterion("more", 120L, 0L);
+        arrivalBeforeDepartureCriterion = new ArrivalBeforeDepartureCriterion();
+        departureBeforeNowCriterion = new DepartureBeforeNowCriterion();
+        combinedCriteria = List.of(landTimeCriterion, arrivalBeforeDepartureCriterion, departureBeforeNowCriterion);
 
-        idealFlights = FlightBuilderTest.createIdealFlights();
-        flightsWithoutDepartureBeforeNow = FlightBuilderTest.createFlightsWithoutDepartingInPast();
-        flightsWithoutDepartureBeforeArriving = FlightBuilderTest.createFlightsWithoutDepartingBeforeArriving();
+        flights = flightService.getAllFlights();
+
+        idealFlights = flights.subList(0, 2);
+        flightsWithoutDepartureBeforeNow = List.of(flights.get(0), flights.get(1), flights.get(3), flights.get(4), flights.get(5));
+        flightsWithoutDepartureBeforeArrival = List.of(flights.get(0), flights.get(1), flights.get(2), flights.get(4), flights.get(5));
+        flightsWithoutLandingTimeMoreThan120Minutes = List.of(flights.get(0), flights.get(1), flights.get(2), flights.get(3));
     }
 
     @Test
     void filterTestWithEmptyPredicate() {
-        Predicate<Flight> nullPredicate = null;
-        List<Predicate<Flight>> nullPredicates = new ArrayList<>();
+        List<FlightFiltrationCriterion> nulls = new ArrayList<>();
         for (int i = 0; i < 3; i++) {
-            nullPredicates.add(null);
+            nulls.add(null);
         }
 
-        assertAll(
-                () -> assertThrows(IllegalArgumentException.class,
-                        () -> flightService.getFlightsByCriteria(nullPredicate)),
-                () -> assertDoesNotThrow(() -> flightService.getFlightsByCriteria(departureBeforeNow,
-                                arrivalBeforeDeparture, null), IllegalArgumentException.class.getCanonicalName())
-        );
+        List<FlightFiltrationCriterion> mixedList = new ArrayList<>();
+        mixedList.add(null);
+        mixedList.add(departureBeforeNowCriterion);
+
+        assertThrows(IllegalArgumentException.class, () -> flightService.getFlightsByCriteria(nulls));
+        assertThrows(IllegalArgumentException.class, () -> flightService.getFlightsByCriteria(mixedList));
     }
 
     @Test
-    void filterTestWithDepartureBeforeNowPredicate() {
-        List<Flight> actualList = flightService.getFlightsByCriteria(departureBeforeNow);
-        assertEquals(actualList, flightsWithoutDepartureBeforeNow);
+    void filterTestWithDepartureBeforeNowCriterion() {
+        List<FlightFiltrationCriterion> criteria = List.of(departureBeforeNowCriterion);
+        List<Flight> actualList = flightService.getFlightsByCriteria(criteria);
+        assertIterableEquals(actualList, flightsWithoutDepartureBeforeNow);
+    }
+
+    @Test
+    void filterTestWithDepartureBeforeArrivalCriterion() {
+        List<FlightFiltrationCriterion> criteria = List.of(arrivalBeforeDepartureCriterion);
+        List<Flight> actualList = flightService.getFlightsByCriteria(criteria);
+        assertIterableEquals(actualList, flightsWithoutDepartureBeforeArrival);
+    }
+
+    @Test
+    void filterTestWithLandTimeMoreThan120Minutes() {
+        List<FlightFiltrationCriterion> criteria = List.of(landTimeCriterion);
+        List<Flight> actualList = flightService.getFlightsByCriteria(criteria);
+        assertIterableEquals(actualList, flightsWithoutLandingTimeMoreThan120Minutes);
+    }
+
+    @Test
+    void filterTestWithCombinedCriterion() {
+        List<Flight> actualList = flightService.getFlightsByCriteria(combinedCriteria);
+        assertIterableEquals(actualList, idealFlights);
     }
 
 }

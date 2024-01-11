@@ -1,44 +1,55 @@
 package com.gridnine.testing.service;
 
+import com.gridnine.testing.filtration.FlightFiltrationCriterion;
 import com.gridnine.testing.model.Flight;
 import com.gridnine.testing.util.FlightBuilder;
 
-import javax.lang.model.type.NullType;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
 public class FlightServiceImpl implements FlightService {
 
-    private final Logger LOGGER = Logger.getAnonymousLogger();
+    private final Logger LOGGER = Logger.getLogger("Flight service logger");
+
+    private final List<Flight> flights;
+
+    public FlightServiceImpl() {
+        this.flights = FlightBuilder.createFlights();
+    }
 
     @Override
     public List<Flight> getAllFlights() {
-        return FlightBuilder.createFlights();
-    }
-
-    // TO DO: decide if the filtration of the null from predicates is a correct way of null handling
-    @Override
-    public List<Flight> getFlightsByCriteria(Predicate<Flight>... predicates) {
-        Predicate<Flight> combinedPredicate = Stream.of(predicates)
-                .filter(Objects::nonNull)
-                .reduce(Predicate::and)
-                .orElse(predicate -> true);
-
-        return getFlightsByCriteria(combinedPredicate);
+        return flights;
     }
 
     @Override
-    public List<Flight> getFlightsByCriteria(Predicate<Flight> predicate) {
-        if (!Objects.nonNull(predicate)) {
-            throw new IllegalArgumentException("Predicate cannot be null.");
+    public List<Flight> getFlightsByCriteria(List<FlightFiltrationCriterion> criteria) {
+        if (Objects.isNull(criteria) || criteria.isEmpty()) {
+            throw new IllegalArgumentException("Criteria list cannot be empty or null.");
         }
 
-        return getAllFlights().stream()
-                .filter(predicate)
+        return flights.stream()
+                .filter(makeCombinedPredicate(criteria))
                 .toList();
+    }
+
+    private Predicate<Flight> makeCombinedPredicate(List<FlightFiltrationCriterion> criteria) {
+        if (criteria.isEmpty()) {
+            LOGGER.log(Level.INFO,"Exception occurred during making a combined predicated");
+            throw new IllegalArgumentException("Criteria is empty");
+        }
+
+        try {
+            return criteria.stream()
+                    .map(FlightFiltrationCriterion::getPredicate)
+                    .reduce(Predicate::and)
+                    .orElse(predicate -> true);
+        } catch (NullPointerException e) {
+            LOGGER.log(Level.INFO, "Exception occurred during making a combined predicated", e);
+            throw new IllegalArgumentException("Criteria contains at least one null");
+        }
     }
 }
