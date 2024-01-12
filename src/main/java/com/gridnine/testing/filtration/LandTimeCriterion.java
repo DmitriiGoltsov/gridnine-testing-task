@@ -1,19 +1,19 @@
 package com.gridnine.testing.filtration;
 
 import com.gridnine.testing.model.Flight;
+import com.gridnine.testing.util.LandTimeMode;
 
 import java.util.function.Predicate;
 
-import static com.gridnine.testing.util.FlightUtil.isLandTimeExceeded;
-import static com.gridnine.testing.util.FlightUtil.isLandTimeLessThanNeeded;
+import static com.gridnine.testing.util.FlightUtil.doesLandTimeSuffice;
 
 public class LandTimeCriterion implements FlightFiltrationCriterion {
 
-    private final String mode;
+    private final LandTimeMode mode;
     private final long minutesMore;
     private final long minutesLess;
 
-    public LandTimeCriterion(String mode, long minutesMore, long minutesLess) {
+    public LandTimeCriterion(LandTimeMode mode, long minutesMore, long minutesLess) {
         this.mode = mode;
         this.minutesMore = minutesMore;
         this.minutesLess = minutesLess;
@@ -23,10 +23,9 @@ public class LandTimeCriterion implements FlightFiltrationCriterion {
     public Predicate<Flight> getPredicate() {
         Predicate<Flight> result;
         switch (mode) {
-            case "more" -> result = flight -> isLandTimeExceeded(flight.getSegments(), minutesMore);
-            case "less" -> result = flight -> isLandTimeLessThanNeeded(flight.getSegments(), minutesLess);
-            case "moreAndLess" -> result = flight -> isLandTimeExceeded(flight.getSegments(), minutesMore)
-                    && isLandTimeLessThanNeeded(flight.getSegments(), minutesLess);
+            case MORE -> result = flight -> doesLandTimeSuffice(flight.getSegments(), 0, minutesMore);
+            case LESS -> result = flight -> doesLandTimeSuffice(flight.getSegments(), minutesLess, 0);
+            case MORE_AND_LESS -> result = flight -> doesLandTimeSuffice(flight.getSegments(), minutesLess, minutesMore);
             default -> throw new IllegalArgumentException("Mode field is incorrect");
         }
 
