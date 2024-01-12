@@ -5,7 +5,7 @@ import com.gridnine.testing.model.Flight;
 import java.time.LocalDateTime;
 import java.util.function.Predicate;
 
-public class DepartureBeforeNowCriterion implements FlightFiltrationCriterion {
+public class DepartureNotBeforeNowCriterion implements FlightFiltrationCriterion {
 
     @Override
     public Predicate<Flight> getPredicate() {
