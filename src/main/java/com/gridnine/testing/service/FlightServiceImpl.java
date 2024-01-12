@@ -14,15 +14,15 @@ public class FlightServiceImpl implements FlightService {
 
     private final Logger LOGGER = Logger.getLogger("Flight service logger");
 
-    private final List<Flight> flights;
+    private final FlightBuilder databaseImitation;
 
-    public FlightServiceImpl() {
-        this.flights = FlightBuilder.createFlights();
+    public FlightServiceImpl(FlightBuilder databaseImitation) {
+        this.databaseImitation = databaseImitation;
     }
 
     @Override
     public List<Flight> getAllFlights() {
-        return flights;
+        return databaseImitation.getFlights();
     }
 
     @Override
@@ -31,16 +31,14 @@ public class FlightServiceImpl implements FlightService {
             throw new IllegalArgumentException("Criteria list cannot be empty or null.");
         }
 
-        return flights.stream()
-                .filter(makeCombinedPredicate(criteria))
+        Predicate<Flight> combinedPredicate = makeCombinedPredicate(criteria);
+
+        return getAllFlights().stream()
+                .filter(combinedPredicate)
                 .toList();
     }
 
     private Predicate<Flight> makeCombinedPredicate(List<FlightFiltrationCriterion> criteria) {
-        if (criteria.isEmpty()) {
-            LOGGER.log(Level.INFO,"Exception occurred during making a combined predicated");
-            throw new IllegalArgumentException("Criteria is empty");
-        }
 
         try {
             return criteria.stream()
