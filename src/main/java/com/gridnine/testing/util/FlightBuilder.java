@@ -10,6 +10,16 @@ import java.util.List;
 
 public class FlightBuilder {
 
+    private final List<Flight> flights;
+
+    public FlightBuilder() {
+        this.flights = createFlights();
+    }
+
+    public List<Flight> getFlights() {
+        return flights;
+    }
+
     public static List<Flight> createFlights() {
         LocalDateTime threeDaysFromNow = LocalDateTime.now().plusDays(3);
         return Arrays.asList(
