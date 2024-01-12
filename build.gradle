@@ -1,9 +1,19 @@
 plugins {
-    id 'java'
+    id 'application'
 }
 
 group = 'com.gridnine.testing'
 version = '1.0-SNAPSHOT'
+
+apply plugin : "java"
+
+ext {
+    javaMainClass = "com.gridnine.testing.Main"
+}
+
+application {
+    mainClassName = javaMainClass
+}
 
 repositories {
     mavenCentral()
